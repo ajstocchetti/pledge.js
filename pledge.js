@@ -5,27 +5,60 @@ Promises Workshop: build the pledge.js deferral-style promise library
 
 var Deferral = function() {
   this.$promise = new $Promise();
-  var p = this.$promise;
+}
 
-  this.resolve = function(data) {
-    if(p.state == "pending") {
-      p.state = "resolved";
-      p.value = data;
-    }
+Deferral.prototype.resolve = function(data) {
+  var p = this.$promise;
+  if(p.state == "pending") {
+    p.state = "resolved";
+    p.value = data;
+    p.callHandlers()
   }
 
-  this.reject = function(err) {
-    if(p.state == "pending") {
-      p.state = "rejected";
-      p.value = err;
-    }
+}
+
+
+
+
+Deferral.prototype.reject = function(err) {
+  var p = this.$promise;
+  if(p.state == "pending") {
+    p.state = "rejected";
+    p.value = err;
+    p.callHandlers()
   }
 }
+
+
 
 var $Promise = function() {
   this.state = "pending";
+  this.handlerGroups = [];
 
 }
+
+$Promise.prototype.then = function(successCb, errorCb) {
+  var cbs = {
+    successCb: (typeof successCb === 'function') ? successCb : false,
+    errorCb: (typeof errorCb === 'function') ? errorCb : false
+  }
+  this.handlerGroups.push(cbs);
+  this.callHandlers()
+}
+
+$Promise.prototype.callHandlers = function() {
+  if (this.state !== 'pending') {
+    while (this.handlerGroups.length > 0) {
+      var func = this.handlerGroups.shift()
+      if (this.state == 'resolved')
+        func.successCb(this.value)
+      else func.errorCb(this.value);
+    }
+  }
+}
+
+
+
 
 var defer = function() {
   return new Deferral();
