@@ -23,8 +23,8 @@ Deferral.prototype.reject = function(err) {
   }
 }
 Deferral.prototype.notify = function(val) {
-  if(this.$promise.state == "pending") {
-    for(var x=0; x<this.$promise.updateCbs.length; x++) {
+  if (this.$promise.state == "pending") {
+    for (var x = 0; x < this.$promise.updateCbs.length; x++) {
       this.$promise.updateCbs[x](val);
     }
   }
@@ -42,7 +42,7 @@ $Promise.prototype.then = function(successCb, errorCb, updateCb) {
     forwarder: new Deferral()
   }
   this.handlerGroups.push(cbs);
-  if( typeof updateCb == 'function') {
+  if (typeof updateCb == 'function') {
     this.updateCbs.push(updateCb);
   }
   this.callHandlers();
@@ -53,45 +53,24 @@ $Promise.prototype.callHandlers = function() {
   if (this.state !== 'pending') {
     while (this.handlerGroups.length > 0) {
       var func = this.handlerGroups.shift();
-      // promise is resolved
-      if (this.state == 'resolved') {
-        if (typeof func.successCb === 'function') {
-          try {
-            var x = func.successCb(this.value);
-            if (typeof x == 'function')
-              return;
-            if (x instanceof $Promise) {
-              x.then(func.forwarder.resolve.bind(func.forwarder),
-                func.forwarder.reject.bind(func.forwarder));
-            } else {
-              func.forwarder.resolve(x);
-            }
-          } catch (err) {
-            func.forwarder.reject(err);
+      var callBackFunc = (this.state == "resolved") ? func.successCb : func.errorCb;
+      if (typeof callBackFunc === 'function') {
+        try {
+          var x = callBackFunc(this.value);
+          if (typeof x == 'function')
+            return;
+          if (x instanceof $Promise) {
+            x.then(func.forwarder.resolve.bind(func.forwarder),
+              func.forwarder.reject.bind(func.forwarder));
+          } else {
+            func.forwarder.resolve(x);
           }
-        } else {
-          func.forwarder.resolve(this.value);
+        } catch (err) {
+          func.forwarder.reject(err);
         }
-      }
-      // promise is rejected
-      else {
-        if (typeof func.errorCb === 'function') {
-          try {
-            x = func.errorCb(this.value);
-            if (typeof x !== 'function') {
-              if (x instanceof $Promise) {
-                x.then(func.forwarder.resolve.bind(func.forwarder),
-                  func.forwarder.reject.bind(func.forwarder));
-              } else {
-                func.forwarder.resolve(x);
-              }
-            }
-          } catch (err) {
-            func.forwarder.reject(err);
-          }
-        } else {
-          func.forwarder.reject(this.value);
-        }
+      } else {
+        if(this.state == "resolved") func.forwarder.resolve(this.value);
+        else func.forwarder.reject(this.value);
       }
     }
   }
@@ -104,18 +83,19 @@ $Promise.prototype.catch = function(errorFunc) {
 var defer = function() {
   return new Deferral();
 }
-/*-------------------------------------------------------
-The spec was designed to work with Test'Em, so we don't
-actually use module.exports. But here it is for reference:
 
-module.exports = {
-  defer: defer,
-};
+  /*-------------------------------------------------------
+  The spec was designed to work with Test'Em, so we don't
+  actually use module.exports. But here it is for reference:
 
-So in a Node-based project we could write things like this:
+  module.exports = {
+    defer: defer,
+  };
 
-var pledge = require('pledge');
-…
-var myDeferral = pledge.defer();
-var myPromise1 = myDeferral.$promise;
---------------------------------------------------------*/
+  So in a Node-based project we could write things like this:
+
+  var pledge = require('pledge');
+  …
+  var myDeferral = pledge.defer();
+  var myPromise1 = myDeferral.$promise;
+  --------------------------------------------------------*/
