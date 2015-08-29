@@ -13,7 +13,6 @@ Deferral.prototype.resolve = function(data) {
     p.value = data;
     p.callHandlers();
   }
-
 }
 Deferral.prototype.reject = function(err) {
   var p = this.$promise;
@@ -46,40 +45,41 @@ $Promise.prototype.callHandlers = function() {
       var func = this.handlerGroups.shift();
       // promise is resolved
       if (this.state == 'resolved') {
-        if(typeof func.successCb === 'function') {
+        if (typeof func.successCb === 'function') {
           try {
             var x = func.successCb(this.value);
-            if( typeof x == 'function')
+            if (typeof x == 'function')
               return;
-            if( x instanceof $Promise) {
-              x.then(func.forwarder.resolve(x.value), func.forwarder.reject(x.value));
-            }
-            else {
+            if (x instanceof $Promise) {
+              x.then(func.forwarder.resolve.bind(func.forwarder),
+                func.forwarder.reject.bind(func.forwarder));
+            } else {
               func.forwarder.resolve(x);
             }
-          }
-          catch (err) {
+          } catch (err) {
             func.forwarder.reject(err);
           }
-        }
-        else {
+        } else {
           func.forwarder.resolve(this.value);
         }
       }
       // promise is rejected
-      else{
-        if(typeof func.errorCb === 'function') {
+      else {
+        if (typeof func.errorCb === 'function') {
           try {
             x = func.errorCb(this.value);
-            if( typeof x !== 'function') {
-              func.forwarder.resolve(x);
+            if (typeof x !== 'function') {
+              if (x instanceof $Promise) {
+                x.then(func.forwarder.resolve.bind(func.forwarder),
+                  func.forwarder.reject.bind(func.forwarder));
+              } else {
+                func.forwarder.resolve(x);
+              }
             }
-          }
-          catch(err) {
+          } catch (err) {
             func.forwarder.reject(err);
           }
-        }
-        else {
+        } else {
           func.forwarder.reject(this.value);
         }
       }
@@ -91,14 +91,9 @@ $Promise.prototype.catch = function(errorFunc) {
 }
 
 
-
-
 var defer = function() {
   return new Deferral();
 }
-
-
-
 /*-------------------------------------------------------
 The spec was designed to work with Test'Em, so we don't
 actually use module.exports. But here it is for reference:
