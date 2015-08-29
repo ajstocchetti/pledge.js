@@ -40,29 +40,57 @@ var $Promise = function() {
 $Promise.prototype.then = function(successCb, errorCb) {
   var cbs = {
     successCb: (typeof successCb === 'function') ? successCb : false,
-    errorCb: (typeof errorCb === 'function') ? errorCb : false
+    errorCb: (typeof errorCb === 'function') ? errorCb : false,
+    forwarder: new Deferral()
   }
   this.handlerGroups.push(cbs);
   this.callHandlers();
+  return cbs.forwarder.$promise;
 }
 
 $Promise.prototype.callHandlers = function() {
   if (this.state !== 'pending') {
     while (this.handlerGroups.length > 0) {
       var func = this.handlerGroups.shift();
+      // promise is resolved
       if (this.state == 'resolved') {
-        if(typeof func.successCb === 'function')
-          func.successCb(this.value);
+        if(typeof func.successCb === 'function') {
+          try {
+            var x = func.successCb(this.value);
+            if( typeof x !== 'function') {
+              func.forwarder.resolve(x);
+            }
+          }
+          catch (err) {
+            func.forwarder.reject(err);
+          }
+        }
+        else {
+          func.forwarder.resolve(this.value);
+        }
       }
-      else{ // promise is rejected
-        if(typeof func.errorCb === 'function')
-          func.errorCb(this.value);
+      // promise is rejected
+      else{
+        if(typeof func.errorCb === 'function') {
+          try {
+            x = func.errorCb(this.value);
+            if( typeof x !== 'function') {
+              func.forwarder.resolve(x);
+            }
+          }
+          catch(err) {
+            func.forwarder.reject(err);
+          }
+        }
+        else {
+          func.forwarder.reject(this.value);
+        }
       }
     }
   }
 }
 $Promise.prototype.catch = function(errorFunc) {
-  this.then(null, errorFunc)
+  return this.then(null, errorFunc)
 }
 
 
