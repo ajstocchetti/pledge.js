@@ -6,7 +6,6 @@ Promises Workshop: build the pledge.js deferral-style promise library
 var Deferral = function() {
   this.$promise = new $Promise();
 }
-
 Deferral.prototype.resolve = function(data) {
   var p = this.$promise;
   if (p.state == "pending") {
@@ -16,10 +15,6 @@ Deferral.prototype.resolve = function(data) {
   }
 
 }
-
-
-
-
 Deferral.prototype.reject = function(err) {
   var p = this.$promise;
   if (p.state == "pending") {
@@ -29,14 +24,11 @@ Deferral.prototype.reject = function(err) {
   }
 }
 
-
-
 var $Promise = function() {
   this.state = "pending";
   this.handlerGroups = [];
 
 }
-
 $Promise.prototype.then = function(successCb, errorCb) {
   var cbs = {
     successCb: (typeof successCb === 'function') ? successCb : false,
@@ -57,7 +49,12 @@ $Promise.prototype.callHandlers = function() {
         if(typeof func.successCb === 'function') {
           try {
             var x = func.successCb(this.value);
-            if( typeof x !== 'function') {
+            if( typeof x == 'function')
+              return;
+            if( x instanceof $Promise) {
+              x.then(func.forwarder.resolve(x.value), func.forwarder.reject(x.value));
+            }
+            else {
               func.forwarder.resolve(x);
             }
           }
