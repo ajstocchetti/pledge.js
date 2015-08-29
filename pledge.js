@@ -22,19 +22,29 @@ Deferral.prototype.reject = function(err) {
     p.callHandlers();
   }
 }
+Deferral.prototype.notify = function(val) {
+  if(this.$promise.state == "pending") {
+    for(var x=0; x<this.$promise.updateCbs.length; x++) {
+      this.$promise.updateCbs[x](val);
+    }
+  }
+}
 
 var $Promise = function() {
   this.state = "pending";
   this.handlerGroups = [];
-
+  this.updateCbs = [];
 }
-$Promise.prototype.then = function(successCb, errorCb) {
+$Promise.prototype.then = function(successCb, errorCb, updateCb) {
   var cbs = {
     successCb: (typeof successCb === 'function') ? successCb : false,
     errorCb: (typeof errorCb === 'function') ? errorCb : false,
     forwarder: new Deferral()
   }
   this.handlerGroups.push(cbs);
+  if( typeof updateCb == 'function') {
+    this.updateCbs.push(updateCb);
+  }
   this.callHandlers();
   return cbs.forwarder.$promise;
 }
